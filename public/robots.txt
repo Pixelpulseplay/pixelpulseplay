@@ -1,0 +1,9 @@
+# *
+User-agent: *
+Allow: /
+
+# Host
+Host: https://www.pixelpulse.com
+
+# Sitemaps
+Sitemap: https://www.pixelpulse.com/sitemap.xml

@@ -1,0 +1,275 @@
+// 'use client';
+
+import Image from "next/image";
+import "../styles/home.css";
+import event_icon from "@public/assets/images/home/event_icon.svg";
+import park_feature_icon from "@public/assets/images/home/park_feature_icon.svg";
+import jump_icon from "@public/assets/images/home/jump_icon.svg";
+import Link from "next/link";
+import { getDataByParentId } from "@/utils/customFunctions";
+import RatingComponent from "./smallComponents/RatingComponent";
+import facebookicon from "@public/assets/images/social_icon/facebook.png";
+import twittericon from "@public/assets/images/social_icon/twitter.png";
+import tiktokicon from "@public/assets/images/social_icon/tiktok.png";
+import instagramicon from "@public/assets/images/social_icon/instagram.png";
+import logo from '@public/assets/images/logo.png'
+import Script from "next/script";
+import { db } from "@/lib/firestore";
+import { slugify } from "@/utils/slugify";
+
+const FOOTER_GROUP_LINKS = [
+  { desc: "Christmas Party", path: "christmas-party" },
+  { desc: "Private Party", path: "private-party" },
+  { desc: "Corporate Parties", path: "corporate-parties-events-groups" },
+  { desc: "School /Groups", path: "school-groups" },
+  { desc: "Fund Raising", path: "fund-raising" },
+];
+
+function normalizeFooterLabel(value = "") {
+  return String(value).replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+export async function getBlogs() {
+  if (!db) {
+    return [];
+  }
+
+  try {
+    const snapshot = await db
+      .collection("blogs")
+      .orderBy("createdAt", "desc")
+      .get();
+
+    return snapshot.docs
+      .map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      }))
+      .filter((blog) => blog.createdAt); 
+  } catch (error) {
+    console.error("Firestore Error:", error);
+    return [];  
+  }
+}
+
+
+const Footer = async ({ location_slug, configdata, menudata, reviewdata }) => {
+   const extractBlogData = await getBlogs();
+
+  if (!configdata?.length || !menudata?.length) return null;
+
+  const {
+    facebook,
+    insta,
+    twitter,
+    tiktok,
+    chatid,
+  } = configdata[0] || {};
+
+  const attractionsData = getDataByParentId(menudata, "attractions");
+  const programsData = getDataByParentId(menudata, "programs");
+  const groupsData = getDataByParentId(menudata, "groups-events");
+  const companyData = getDataByParentId(menudata, "about-us");
+  const blogsData = getDataByParentId(menudata, "blogs");
+  const birthDaypartyData = getDataByParentId(menudata, "kids-birthday-parties");
+  const companyChildren = companyData?.[0]?.children || [];
+  const groupChildren = (groupsData?.[0]?.children || []).filter(
+    (item) => item?.isactive == 1,
+  );
+  const footerGroupLinks = FOOTER_GROUP_LINKS.map((fallback) => {
+    const matchedItem = groupChildren.find(
+      (item) => normalizeFooterLabel(item?.desc) === normalizeFooterLabel(fallback.desc),
+    );
+
+    return matchedItem
+      ? {
+          desc: matchedItem.desc,
+          href: `/${location_slug}/${matchedItem.parentid}/${matchedItem.path}`,
+        }
+      : {
+          desc: fallback.desc,
+          href: `/${location_slug}/groups-events/${fallback.path}`,
+        };
+  });
+  const hasFooterContactLink = companyChildren.some(
+    (item) => item?.path?.toLowerCase() === "contactus" && item?.isactive == 1,
+  );
+
+  return (
+    <footer className="aero_footer_section-bg">
+      {/* Hero Section */}
+      {attractionsData?.[0]?.children?.length > 0 && (
+        <section className="aero_home-headerimg-wrapper">
+          <Image
+            src="/assets/images/shootinggame.jpg"
+            alt="Shooting game"
+            width={1200}
+            height={600}
+            title="Shooting game"
+            unoptimized
+          />
+          <article className="aero-max-container aero_home_BPJ_wrapper">
+            {[
+              { icon: event_icon, text: "Birthday Parties", url: `/${location_slug}/${birthDaypartyData?.[0]?.path}` },
+             
+              { icon: jump_icon, text: "Group Events", url: `/${location_slug}/${groupsData?.[0]?.path}` },
+            ].map((item, index) => (
+              <div className="d-flex-center" key={index}>
+                <a href={item.url} >
+                  <Image
+                    src={item.icon}
+                    width={90}
+                    height={80}
+                    alt={item.text}
+                    className={item.text === "Birthday Parties" ? "aero_home_BPJ_icon--glow" : ""}
+                    unoptimized
+                  />
+                </a>
+                <span>{item.text}</span>
+              </div>
+            ))}
+          </article>
+        </section>
+      )}
+
+      <section className="aero-max-container">
+        {/* Rating */}
+        {/* {reviewdata && <RatingComponent ratingdata={reviewdata} />} */}
+
+        {/* Logo + Socials */}
+        {/* <div className="aero_logo_social_wrap d-flex-center ">
+          <Link href={`/${location_slug}`} prefetch>
+            <Image
+              src={logo}
+              alt="pixelpulseplay Logo"
+              width={100}
+              height={80}
+              unoptimized
+            />
+          </Link>
+          <div className="aero_social_icon_wrap">
+            {facebook && (
+              <Link href={`https://www.facebook.com/${facebook}`} target="_blank" prefetch className="aero_social_icon">
+                <Image src={facebookicon} alt="Facebook" height={50} width={50} unoptimized />
+              </Link>
+            )}
+            {twitter && (
+              <Link href={`https://x.com/${twitter}`} target="_blank" prefetch className="aero_social_icon">
+                <Image src={twittericon} alt="Twitter" height={50} width={50} unoptimized />
+              </Link>
+            )}
+            {insta && (
+              <Link href={`https://www.instagram.com/${insta}`} target="_blank" prefetch className="aero_social_icon">
+                <Image src={instagramicon} alt="Instagram" height={50} width={50} unoptimized />
+              </Link>
+            )}
+            {tiktok && (
+              <Link href={`https://www.tiktok.com/${tiktok}`} target="_blank" prefetch className="aero_social_icon">
+                <Image src={tiktokicon} alt="TikTok" height={50} width={50} unoptimized />
+              </Link>
+            )}
+          </div>
+        </div> */}
+
+        {/* Footer Menus */}
+        <section className="aero_footer_col-4-wrapper">
+          <ul>
+            <li>Attractions</li>
+            {attractionsData?.[0]?.children?.map((item, i) => (
+              <li key={i}>
+                <Link href={`/${location_slug}/${item?.parentid}/${item?.path}`} prefetch>
+                  {item?.desc}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {/* {
+            programsData?.length > 0 && (<ul>
+              <li>Programs</li>
+              {programsData?.[0]?.children?.map((item, i) => (
+                <li key={i}>
+                  <Link href={`/${location_slug}/${item?.parentid}/${item?.path}`} prefetch>
+                    {item?.desc}
+                  </Link>
+                </li>
+              ))} */}
+              <ul>
+              {companyData?.[0]?.children?.length > 0 && (
+                <>
+                  <li>Company</li>
+                  {companyData[0].children.map((item, i) => (
+                    item?.isactive == 1 && (
+                      <li key={i}>
+                        <Link href={`/${location_slug}/${item?.parentid}/${item?.path}`} prefetch>
+                          {item?.desc}
+                        </Link>
+                      </li>
+                    )
+                  ))}
+                  {!hasFooterContactLink && (
+                    <li>
+                      <Link href={`/${location_slug}/contactus`} prefetch>
+                        Contact Us
+                      </Link>
+                    </li>
+                  )}
+                </>
+              )}
+            </ul>
+            {/* )
+          } */}
+
+          <ul>
+            <li>Groups</li>
+            {footerGroupLinks.map((item, i) => (
+              <li key={i}>
+                <Link href={item.href} prefetch>
+                  {item.desc}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <ul>
+            <li>Latest News</li>
+            {extractBlogData?.slice(0, 4).map((item, i) => { 
+              const slug = slugify(item.title);
+              return (
+              <li key={i}>
+                <Link href={`/blogs/${slug}?uid=${item.id}`} prefetch>
+                  <article className="d-flex-center aero_footer_article-card">
+                    <Image
+                      src={item?.featuredImage}
+                      alt={item?.title}
+                      title={item?.title}
+                      width={50}
+                      height={50}
+                      unoptimized
+                    />
+                    <div>
+                      <h6> {item?.updatedAt?.seconds
+              ? new Date(item.updatedAt.seconds * 1000).toDateString()
+              : null}</h6>
+                      <p>{item?.title}</p>
+                    </div>
+                  </article>
+                </Link>
+              </li>
+            )})}
+          </ul>
+        </section>
+      </section>
+
+      {/* Chat Script */}
+      {/* {chatid && (
+        <Script
+          src="https://widgets.leadconnectorhq.com/loader.js"
+          data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
+          data-widget-id={chatid}
+          strategy="afterInteractive"
+        />
+      )} */}
+    </footer>
+  );
+};
+
+export default Footer;
